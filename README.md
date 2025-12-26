@@ -31,5 +31,5 @@ The application manages several core entities:
 
 1. **Clone the repository**
    ```bash
-   git clone [https://github.com/yourusername/cericar-web-app.git](https://github.com/yourusername/cericar-web-app.git)
+   git clone [https://github.com/ZinebMEFTAH/car-web-app.git](https://github.com/ZinebMEFTAH/car-web-app.git)
    cd cericar-web-app
