@@ -2034,3 +2034,38 @@ textarea {
     align-items: center !important;
     gap: 12px !important;              /* Physical space between elements */
 }
+
+/* Error Page Layout */
+.error-page-wrapper {
+    /* 1. Occupy the full space of the parent */
+    width: 100%;
+    min-height: 75vh; 
+    
+    /* 2. Activate Flexbox */
+    display: flex;
+    
+    /* 3. Dead Center */
+    justify-content: center; /* Horizontal */
+    align-items: center;     /* Vertical */
+}
+
+.card-error {
+    /* 4. Define the card size manually since we removed col-md-5 */
+    width: 100%;
+    max-width: 500px; /* Limits the width so it looks good on big screens */
+    
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+}
+
+.error-icon {
+    font-size: 4rem;
+    color: #ff6b6b;
+    opacity: 0.8;
+}
+
+.btn-pill {
+    border-radius: 50px;
+    font-weight: 600;
+}

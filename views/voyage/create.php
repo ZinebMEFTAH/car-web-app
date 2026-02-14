@@ -2,12 +2,11 @@
 
 /** @var yii\web\View $this */
 /** @var app\models\ProposeVoyageForm $model */
+/** @var array $types */
+/** @var array $marques */
 
 use yii\bootstrap5\ActiveForm;
 use yii\bootstrap5\Html;
-use yii\helpers\ArrayHelper;
-use app\models\TypeVehicule;
-use app\models\MarqueVehicule;
 
 $this->title = 'Proposer un voyage';
 ?>
@@ -23,7 +22,9 @@ $this->title = 'Proposer un voyage';
                 
                 <div class="card-body">
                     
-                    <?php $form = ActiveForm::begin(['id' => 'form-propose-voyage']); ?>
+                    <?php 
+                    // start the form
+                    $form = ActiveForm::begin(['id' => 'form-propose-voyage']); ?>
 
                     <h6 class="text-muted text-uppercase font-weight-bold mb-3 mt-2">Trajet</h6>
                     <div class="row">
@@ -31,7 +32,7 @@ $this->title = 'Proposer un voyage';
                             <?= $form->field($model, 'depart')->textInput(['placeholder' => 'Départ (ex: Paris)']) ?>
                         </div>
                         <div class="col-md-6">
-                            <?= $form->field($model, 'arrivee')->textInput(['placeholder' => 'Arrivée (ex: Avignon)']) ?>
+                            <?= $form->field($model, 'arrivee')->textInput(['placeholder' => 'Arrivée (ex: Nice)']) ?>
                         </div>
                     </div>
 
@@ -51,29 +52,16 @@ $this->title = 'Proposer un voyage';
                     <h6 class="text-muted text-uppercase font-weight-bold mb-3 mt-4">Véhicule & Options</h6>
                     <div class="row">
                         <div class="col-md-4">
-                            <?= $form->field($model, 'nbbagage')->dropdownList([
-                                0 => 'Aucun bagage',
-                                1 => '1 Bagage moyen',
-                                2 => '2 Bagages moyens',
-                                3 => 'Gros bagages'
-                            ])->label('Bagages') ?>
+                            <?= $form->field($model, 'nbbagage')->textInput([ 'placeholder' => 'Aucune bagage'])->label('Bagages') ?>
                         </div>
 
                         <div class="col-md-4">
-                            <?php 
-                                // Maps 'id' to 'typev' from database
-                                $types = ArrayHelper::map(TypeVehicule::find()->all(), 'id', 'typev'); 
-                            ?>
                             <?= $form->field($model, 'idtypev')->dropdownList($types, [
                                 'prompt' => 'Sélectionnez un type...'
                             ])->label('Type') ?>
                         </div>
 
                         <div class="col-md-4">
-                             <?php 
-                                // Maps 'id' to 'marquev' from database
-                                $marques = ArrayHelper::map(MarqueVehicule::find()->all(), 'id', 'marquev'); 
-                             ?>
                              <?= $form->field($model, 'idmarquev')->dropdownList($marques, [
                                  'prompt' => 'Sélectionnez une marque...'
                              ])->label('Marque') ?>

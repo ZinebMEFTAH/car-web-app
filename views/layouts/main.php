@@ -22,6 +22,7 @@ $this->registerLinkTag(['rel' => 'icon', 'type' => 'image/x-icon', 'href' => Yii
     <title><?= Html::encode($this->title) ?></title>
     <base href="<?= Yii::$app->request->baseUrl ?>/">
     <link rel="stylesheet" href="<?= Yii::getAlias('@web') ?>/css/bootstrap.min.css">
+    
     <link rel="stylesheet" href="<?= Yii::getAlias('@web') ?>/css/covoit.css?v=<?= time() ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <?php $this->head() ?>
@@ -37,7 +38,9 @@ $this->registerLinkTag(['rel' => 'icon', 'type' => 'image/x-icon', 'href' => Yii
             <nav aria-label="breadcrumb">
                 <h6 class="font-weight-bolder mb-0 d-flex align-items-center">
                     <img src="<?= Yii::getAlias('@web/img/logo.png') ?>" alt="Logo" class="brand-logo">
-                    <a href="<?= Url::to(['site/index']) ?>" class="text-dark text-decoration-none">
+                    <a href="<?= Url::to(['site/index']) ?>" 
+                       class="text-dark text-decoration-none"
+                       >
                         Covoit‘Voyages
                     </a>
                 </h6>
@@ -75,7 +78,7 @@ $this->registerLinkTag(['rel' => 'icon', 'type' => 'image/x-icon', 'href' => Yii
                     </li>
                 <?php else: ?>
                     <li class="nav-item">
-                        <a href="<?= Url::to(['site/profile']) ?>" class="nav-link text-body font-weight-bold px-0 ms-lg-2">
+                        <a href="<?= Url::to(['site/profile']) ?>" class="nav-link text-body font-weight-bold px-0 ms-lg-2" >
                             Mon Profil
                         </a>
                     </li>
@@ -87,17 +90,18 @@ $this->registerLinkTag(['rel' => 'icon', 'type' => 'image/x-icon', 'href' => Yii
 </nav>
 
 <main class="main-content position-relative border-radius-lg">
-    <div class="container-fluid py-4">
+    <div class="container-fluid py-4" >
         <?php if (!empty($this->params['breadcrumbs'])): ?>
             <div class="mb-2">
                 <?= Breadcrumbs::widget(['links' => $this->params['breadcrumbs']]) ?>
             </div>
         <?php endif ?>
         
-        <?= Alert::widget() ?>
         <div id="notif"></div>
 
-        <?= $content ?>
+        <div id="content-container">
+            <?= $content ?>
+        </div>
 
         <footer class="footer pt-4 mt-4">
             <div class="container-fluid">
@@ -107,12 +111,6 @@ $this->registerLinkTag(['rel' => 'icon', 'type' => 'image/x-icon', 'href' => Yii
                         Covoit‘Voyages — © 2025
                     </div>
 
-                    <ul class="nav nav-footer">
-                        <li class="nav-item">
-                            <a href="#" class="nav-link text-muted px-2">Mentions légales</a>
-                        </li>
-                    </ul>
-                    
                 </div>
             </div>
         </footer>
@@ -121,7 +119,10 @@ $this->registerLinkTag(['rel' => 'icon', 'type' => 'image/x-icon', 'href' => Yii
 
 <?php
 $this->registerJsFile('@web/js/bootstrap.bundle.min.js', ['position' => \yii\web\View::POS_END]);
-$this->registerJsFile('@web/js/navbar.js', ['depends' => [\yii\web\JqueryAsset::class]]);
+// avoid cache on js too
+$this->registerJsFile('@web/js/voyage.js?v=' . time(), ['depends' => [\yii\web\JqueryAsset::class]]);
+$this->registerJsFile('@web/js/navbar.js?v=' . time(), ['depends' => [\yii\web\JqueryAsset::class]]);
+
 ?>
 
 <?php $this->endBody() ?>

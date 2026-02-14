@@ -21,7 +21,13 @@ $this->title = 'Inscription';
                 </div>
 
                 <div class="card-body">
-                    <?php $form = ActiveForm::begin(['id' => 'form-signup']); ?>
+                    <?php 
+                    // start form, data sent to actionSignup
+                    $form = ActiveForm::begin([
+                                            'id' => 'form-signup',
+                                            'action' => ['site/signup'],
+                                            'method' => 'post',
+                                        ]); ?>
 
                         <div class="row">
                             <div class="col-md-6">
@@ -48,22 +54,15 @@ $this->title = 'Inscription';
                         ])->label('Photo de profil (URL) - Optionnel') ?>
                         
                         <div class="my-3 p-3 bg-light rounded border">
-                            <div class="form-check form-switch ps-0">
-                                <?= $form->field($model, 'hasPermis')->checkbox([
-                                    'class' => 'form-check-input ms-0 me-2',
-                                    'id' => 'toggle-permis', // Keep ID for JS
-                                    'label' => 'Je possède un permis de conduire',
-                                    'labelOptions' => ['class' => 'form-check-label font-weight-bold']
-                                ]) ?>
-                            </div>
-
-                            <div id="container-permis" style="display: none; margin-top: 15px;">
-                                <?= $form->field($model, 'permis')->textInput([
-                                    'placeholder' => 'Numéro du permis (Ex: 123456789)',
-                                    'id' => 'input-permis-val'
-                                ])->label('Numéro de permis') ?>
-                                <small class="text-muted text-xs">Nécessaire pour proposer des voyages.</small>
-                            </div>
+                            <h6 class="text-muted text-uppercase font-weight-bold mb-3" style="font-size: 0.75rem;">Conducteur (Optionnel)</h6>
+                            
+                            <?= $form->field($model, 'permis')->textInput([
+                                'placeholder' => 'Numéro du permis (Ex: 123456789)',
+                            ])->label('Numéro de permis') ?>
+                            
+                            <small class="text-muted text-xs">
+                                Remplissez ce champ uniquement si vous souhaitez proposer des voyages.
+                            </small>
                         </div>
 
                         <div class="text-center">
@@ -72,31 +71,6 @@ $this->title = 'Inscription';
 
                     <?php ActiveForm::end(); ?>
                 </div>
-
-                <?php 
-                // Updated JS to handle "Remembering" state
-                $this->registerJs("
-                    var checkbox = $('#toggle-permis');
-                    var container = $('#container-permis');
-                    var input = $('#input-permis-val');
-
-                    function togglePermis() {
-                        if(checkbox.is(':checked')) {
-                            container.slideDown();
-                        } else {
-                            container.slideUp();
-                            // Optional: clear value if unchecked (depends on preference)
-                            // input.val(''); 
-                        }
-                    }
-
-                    // 1. Run on change
-                    checkbox.change(togglePermis);
-
-                    // 2. Run IMMEDIATELY on load (To remember state after error)
-                    togglePermis();
-                ");
-                ?>
 
                 <div class="card-footer text-center pt-0 px-lg-2 px-1">
                     <p class="mb-4 text-sm mx-auto">

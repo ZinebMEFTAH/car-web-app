@@ -16,15 +16,17 @@ $this->title = 'Connexion';
                 </div>
 
                 <div class="card-body">
-                    <?php $form = ActiveForm::begin(['id' => 'login-form']); ?>
+                    <?php 
+                    // start the form, pointing to actionLogin in SiteController
+                    $form = ActiveForm::begin([
+                                        'id' => 'login-form',
+                                        'action' => ['site/login'],
+                                        'method' => 'post',
+                                    ]); ?>
 
                         <?= $form->field($model, 'pseudo')->textInput(['placeholder' => 'Pseudo', 'autofocus' => true])->label(false) ?>
 
                         <?= $form->field($model, 'password')->passwordInput(['placeholder' => 'Mot de passe'])->label(false) ?>
-
-                        <?= $form->field($model, 'rememberMe')->checkbox([
-                            'label' => 'Se souvenir de moi',
-                        ]) ?>
 
                         <div class="text-center">
                             <?= Html::submitButton('Connexion', ['class' => 'btn btn-dark w-100 my-4']) ?>
@@ -36,7 +38,7 @@ $this->title = 'Connexion';
                 <div class="card-footer text-center pt-0 px-lg-2 px-1">
                     <p class="mb-4 text-sm mx-auto">
                         Pas encore de compte ?
-                        <a href="<?= Url::to(['site/signup']) ?>" class="text-primary text-gradient font-weight-bold">
+                        <a href="<?= Url::to(['site/signup']) ?>" class="text-primary text-gradient font-weight-bold bar-menus">
                             Créer un compte
                         </a>
                     </p>

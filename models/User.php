@@ -10,7 +10,7 @@ class User extends BaseObject implements IdentityInterface
     public $id;
     public $pseudo;
     public $pass;
-    public $prenom; // <--- Strictly added this because the Navbar uses it
+    public $prenom; // navbar uses it
     public $permis;
 
     /**
@@ -25,7 +25,7 @@ class User extends BaseObject implements IdentityInterface
             'pseudo' => $internaute->pseudo, 
             'pass' => $internaute->pass,
             'prenom' => $internaute->prenom,
-            'permis' => $internaute->permis, // <--- MAP IT
+            'permis' => $internaute->permis, 
         ]) : null;
     }    
 
@@ -41,7 +41,7 @@ class User extends BaseObject implements IdentityInterface
             'pseudo' => $internaute->pseudo, 
             'pass' => $internaute->pass,
             'prenom' => $internaute->prenom,
-            'permis' => $internaute->permis, // <--- MAP IT
+            'permis' => $internaute->permis, 
         ]) : null;
     }
 

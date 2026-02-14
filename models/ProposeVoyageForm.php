@@ -11,7 +11,7 @@ class ProposeVoyageForm extends Model
 {
     public $depart;
     public $arrivee;
-    // public $distance; // REMOVED: You cannot define distance for read-only routes
+    // public $distance; // it is read only data so no need to get the distance from user ! 
     
     public $heuredepart;
     public $nbplacedispo;
@@ -25,13 +25,14 @@ class ProposeVoyageForm extends Model
     public function rules()
     {
         return [
-            // Removed 'distance' from required
-            [['depart', 'arrivee', 'heuredepart', 'nbplacedispo', 'prix_total', 'nbbagage', 'idtypev', 'idmarquev'], 'required'],
-            [['depart', 'arrivee'], 'string', 'max' => 25],
-            [['nbplacedispo', 'nbbagage', 'idtypev', 'idmarquev'], 'integer', 'min' => 1],
-            ['heuredepart', 'integer', 'min' => 0, 'max' => 23],
-            ['prix_total', 'number', 'min' => 0],
-            [['contraintes'], 'string', 'max' => 500],
+            [['depart','arrivee', 'heuredepart', 'nbplacedispo', 'prix_total' , 'nbbagage', 'idtypev', 'idmarquev'], 'required'],
+            [['depart', 'arrivee'] , 'string', 'max'=> 25],
+            [['nbplacedispo' ,'nbbagage' , 'idmarquev'], 'integer', 'min' => 1],
+            ['heuredepart',  'integer', 'min'=> 0 ,'max' => 23],
+            ['prix_total' , 'number', 'min' =>0],
+            [['contraintes'] , 'string', 'max'=>500],
+            [ ['nbbagage'], 'string', 'max'=>200 ] ,
+
         ];
     }
 
@@ -42,22 +43,20 @@ class ProposeVoyageForm extends Model
         $villeDepart = mb_convert_case(trim($this->depart), MB_CASE_TITLE, "UTF-8");
         $villeArrivee = mb_convert_case(trim($this->arrivee), MB_CASE_TITLE, "UTF-8");
 
-        // 1. Find Existing Trajet
-        $trajet = Trajet::find()
-            ->where(['depart' => $villeDepart, 'arrivee' => $villeArrivee])
-            ->one();
+        // we get the trajet
+        $trajet = Trajet::findOne(['depart' => $villeDepart, 'arrivee' => $villeArrivee]);
 
-        // IF NOT FOUND: We show an error instead of crashing the DB
+        // we check it does really exist!
         if (!$trajet) {
+
             $this->addError('depart', "Ce trajet ({$villeDepart} → {$villeArrivee}) n'existe pas dans la base de référence.");
             return false;
         }
 
-        // 2. Create Voyage
+        // we create the  voyage
         $voyage = new Voyage();
         $voyage->conducteur = Yii::$app->user->id;
-        $voyage->trajet = $trajet->id; // Use the existing ID
-        
+        $voyage->trajet = $trajet->id; 
         $voyage->heuredepart = $this->heuredepart;
         $voyage->nbplacedispo = $this->nbplacedispo;
         $voyage->nbbagage = $this->nbbagage;
@@ -65,7 +64,7 @@ class ProposeVoyageForm extends Model
         $voyage->idmarquev = $this->idmarquev;
         $voyage->contraintes = $this->contraintes;
 
-        // Calculate Tarif based on the Database Distance
+        // Calculate price based on the Database Distance
         if ($trajet->distance > 0) {
             $voyage->tarif = $this->prix_total / $trajet->distance;
         } else {

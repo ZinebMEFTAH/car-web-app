@@ -7,11 +7,14 @@ use yii\web\Controller;
 use yii\filters\AccessControl;
 use app\models\Voyage;
 use app\models\Reservation;
+use app\models\VoyageForm; 
+use app\models\Internaute; 
+use yii\web\Response;      
 use yii\web\NotFoundHttpException;
+use yii\helpers\Url;
 
 class ReservationController extends Controller
 {
-    // Ensure only logged-in users can reserve
     public function behaviors()
     {
         return [
@@ -21,7 +24,7 @@ class ReservationController extends Controller
                     [
                         'allow' => true,
                         'actions' => ['creer', 'mes-reservations'],
-                        'roles' => ['@'], // '@' = Logged In users only
+                        'roles' => ['@'],
                     ],
                 ],
             ],
@@ -30,52 +33,68 @@ class ReservationController extends Controller
 
     public function actionCreer()
     {
+        Yii::$app->response->format = Response::FORMAT_JSON; 
+        
         $request = Yii::$app->request;
 
         if ($request->isPost) {
-            $voyageId = $request->post('voyage_id');
+
+            $voyageIdsRaw = $request->post('voyage_id');
             $nbPlaces = (int) $request->post('nb_places');
 
-            $voyage = Voyage::findOne($voyageId);
+            // Split into an array
+            $voyageIds = explode(',', $voyageIdsRaw);
 
-            if (!$voyage) {
-                throw new NotFoundHttpException("Voyage introuvable.");
+            //check if ALL voyages are valid before booking anything
+            foreach ($voyageIds as $id) {
+                $voyage = Voyage::findOne($id);
+                if (!$voyage) {
+                    return ['message' => "Erreur : Un des trajets est introuvable.", 'messageType' => 'error'];
+                }
+                if (!$voyage->canItAccept($nbPlaces)) {
+                     $trajet = $voyage->trajetObject;
+                     return [
+                        'message' => "Place insuffisante pour le trajet " . $trajet->depart . " -> " . $trajet->arrivee, 
+                        'messageType' => 'error'
+                     ];
+                }
             }
 
-            // 1. Double check capacity (Security)
-            if (!$voyage->canItAccept($nbPlaces)) {
-                Yii::$app->session->setFlash('error', "Désolé, ce voyage n'a plus assez de places.");
-                return $this->redirect(['voyage/index']);
+            //Save all reservations
+            $savedCount = 0;
+            foreach ($voyageIds as $id) { // we do for each, in case if it is correspondence
+                $reservation = new Reservation();
+                $reservation->voyage = $id;
+                $reservation->voyageur = Yii::$app->user->id;
+                $reservation->nbplaceresa = $nbPlaces;
+                if ($reservation->save()) {
+                    $savedCount++;
+                }
             }
 
-            // 2. Create Reservation
-            $reservation = new Reservation();
-            $reservation->voyage = $voyage->id;
-            $reservation->voyageur = Yii::$app->user->id; // Current User
-            $reservation->nbplaceresa = $nbPlaces;
-
-            if ($reservation->save()) {
-                Yii::$app->session->setFlash('success', "Réservation confirmée avec succès !");
-                // 3. Redirect to Profile / My Reservations
-                return $this->redirect(['site/profile']);
+            // Response
+            if ($savedCount === count($voyageIds)) {
+                $user = Internaute::findOne(Yii::$app->user->id);
+                return [
+                    'html' => $this->renderPartial('@app/views/site/profile', [
+                        'user' => $user,
+                        'reservations'=> $user->reservationsObject ,
+                        'propositions'=> $user->voyagesConduitsObject,
+                    ]),
+                    'message' => "Réservation confirmée (trajet complet) !",
+                    'messageType' => 'success',
+                ];
             } else {
-                Yii::$app->session->setFlash('error', "Erreur lors de la réservation.");
+                 return ['message' => "Erreur lors de l'enregistrement d'un ou plusieurs voyage!.", 'messageType' => 'error'];
             }
         }
 
-        return $this->redirect(['voyage/index']);
-    }
-
-    public function actionMesReservations()
-    {
-        // Get current user ID directly
-        $userId = Yii::$app->user->id; 
-        
-        // Pass the ID, not the object
-        $reservations = Reservation::getReservationsForInternaute($userId);
-
-        return $this->render('mes-reservations', [
-            'reservations' => $reservations
-        ]);
+        // Fallback
+        return [
+            'html' => $this->renderPartial('@app/views/voyage/recherche-voyage', [
+                'model' => new VoyageForm(),
+                'voyages' => []
+            ]),
+        ];
     }
 }

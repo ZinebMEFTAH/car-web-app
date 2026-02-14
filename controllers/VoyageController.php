@@ -7,17 +7,15 @@ use yii\filters\AccessControl;
 use yii\web\Controller;
 use yii\web\Response;
 use yii\filters\VerbFilter;
-use app\models\LoginForm;
-use app\models\ContactForm;
-use app\models\Flowers;
-use app\models\Internaute;
-use app\models\Voyage;
-use app\models\MarqueVehicule;
-use app\models\Reservation;
-use app\models\Trajet;
-use app\models\TypeVehicule;
 use app\models\VoyageForm;
 use app\models\ProposeVoyageForm;
+use app\models\Trajet;
+use app\models\Voyage;
+use app\models\MarqueVehicule;
+use app\models\TypeVehicule;
+use yii\helpers\Url;
+use app\models\Internaute;
+use yii\helpers\ArrayHelper;
 
 class VoyageController extends Controller
 {
@@ -47,9 +45,6 @@ class VoyageController extends Controller
         ];
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function actions()
     {
         return [
@@ -65,133 +60,147 @@ class VoyageController extends Controller
 
     /**
      * Displays search page.
-     *
-     * @return string
      */
     public function actionIndex()
     {
         $model = new VoyageForm();
+        
+        //AJAX, return JSON
+        if (Yii::$app->request->isAjax) {
+            Yii::$app->response->format = Response::FORMAT_JSON; 
+            return [
+                'html' => $this->renderPartial('recherche-voyage', [
+                    'model' => $model,
+                    'voyages' => [],
+                ]),
+            ];
+        }
+
+        // Direct Access (Reload), return Full Page
         return $this->render('recherche-voyage', [
             'model' => $model,
             'voyages' => [],
-            'message' => null,
-            'messageType' => null,
         ]);
     }
         
-public function actionRechercherVoyage()
+    public function actionRechercherVoyage()
     {
         Yii::$app->response->format = Response::FORMAT_JSON;
 
         $model = new VoyageForm();
-
-        // Valeurs par défaut
+        
         $voyagesDirect = [];
-        $pathsCorrespondance = []; // [INJECTED] New variable for paths
-        $message = "Erreur interne lors de la recherche.";
+        $pathsCorrespondance = [];
+        
+        $countDirectDisplayed = 0;
+        $countDirectAvailable = 0;
+        
+        $message = "Erreur interne.";
         $messageType = 'error';
-        $tableResult = "";
 
         try {
-
             if (!$model->load(Yii::$app->request->post()) || !$model->validate()) {
                 $message = 'Formulaire invalide. Vérifiez les champs.';
                 $messageType = 'error';
             } else {
-
                 $departClean  = mb_convert_case($model->depart,  MB_CASE_TITLE, 'UTF-8');
                 $arriveeClean = mb_convert_case($model->arrivee, MB_CASE_TITLE, 'UTF-8');
                 $nbDemandes   = (int) $model->nbPersonnes;
 
-                // -----------------------------------------------------------
-                // 1. YOUR ORIGINAL DIRECT SEARCH LOGIC (PRESERVED)
-                // -----------------------------------------------------------
+                // **** DIRECT VOYAGES
+
                 $trajet = Trajet::getTrajet($departClean, $arriveeClean);
 
-                if (!$trajet) {
-                    $message = "Aucun trajet n'existe entre {$departClean} et {$arriveeClean}.";
-                    $messageType = 'error';
-                } else {
-                    $voyages = $trajet->voyagesObject;
+                if ($trajet) {
+                    foreach ($trajet->voyagesObject as $voyage) {
+                        
+                        // if the car is too small for the request (original capacity), we don't even show it
+                        if ($voyage->nbplacedispo >= $nbDemandes) {
+                            
+                            $voyagesDirect[] = $voyage; 
+                            $countDirectDisplayed++;
 
-                    if (empty($voyages)) {
-                        $message = "Il n'y a actuellement aucun voyage proposé sur ce trajet.";
-                        $messageType = 'warn';
-                    } else {
-                        // Your specific filtering logic
-                        $voyagesAvecAssezDePlacesDispo = [];
-                        $voyagesAvecAssezDePlaces = [];
-
-                        foreach ($voyages as $voyage) {
-                            if ($voyage->nbplacedispo >= $nbDemandes) {
-                                $voyagesAvecAssezDePlaces[] = $voyage;
-                                if ($voyage->canItAccept($nbDemandes)) {
-                                    $voyagesAvecAssezDePlacesDispo[] = $voyage;
-                                }
+                            // check if there are actually enough seats left right now
+                            if ($voyage->canItAccept($nbDemandes)) {
+                                $countDirectAvailable++;
                             }
-                        }
-
-                        $voyagesDirect = $voyagesAvecAssezDePlaces; // Table shows all valid cars
-
-                        if (empty($voyagesAvecAssezDePlacesDispo)) {
-                            $message = "Des voyages existent sur ce trajet, mais aucun n'a assez de places pour {$nbDemandes} personne(s).";
-                            $messageType = 'warn';
-                        } else {
-                            $nbOk = count($voyagesAvecAssezDePlacesDispo);
-                            $message = "{$nbOk} voyage(s) trouvé(s) avec suffisamment de places.";
-                            $messageType = 'success';
                         }
                     }
                 }
 
-                // -----------------------------------------------------------
-                // 2. INJECTED: CORRESPONDENCE SEARCH
-                // -----------------------------------------------------------
+                // **** CORRESPONDENCE VOYAGES
+
                 if ($model->correspondance == 1) {
-                    $pathsCorrespondance = Voyage::searchCorrespondences($departClean, $arriveeClean, $nbDemandes);
+                    $rawPaths = Voyage::searchCorrespondences($departClean, $arriveeClean, $nbDemandes);
+                    
+                    foreach ($rawPaths as $path) {
+                        if (count($path) < 2) continue;
+                        if (!$path[0]->trajetObject || !$path[count($path)-1]->trajetObject) continue;
+
+                        // verify that every part of the correspondence has enough space
+                        $allLegsOk = true;
+                        foreach ($path as $leg) {
+                            if (!$leg->canItAccept($nbDemandes)) {
+                                $allLegsOk = false;
+                                break; 
+                            }
+                        }
+
+                        if ($allLegsOk) {
+                            $pathsCorrespondance[] = $path;
+                        }
+                    }
                 }
 
-                // -----------------------------------------------------------
-                // 3. INJECTED: MERGE MESSAGES (If Correspondence Found)
-                // -----------------------------------------------------------
-                $nbDirectVisible = count($voyagesDirect);
-                $nbCorresp       = count($pathsCorrespondance);
-                $totalFound      = $nbDirectVisible + $nbCorresp;
+                $countCorresp = count($pathsCorrespondance);
 
-                // If we found correspondence, we update the message to show total results
-                if ($nbCorresp > 0) {
-                    // Start with what direct search found
-                    $directMsg = ($nbDirectVisible > 0) ? "$nbDirectVisible direct(s)" : "0 direct";
+                //****MESSAGES
+                
+                // nothing found
+                if ($countDirectDisplayed == 0 && $countCorresp == 0) {
+                    $message = "Aucun voyage trouvé pour ces critères.";
+                    $messageType = 'warn'; 
                     
-                    $message = "Trouvé : $directMsg et $nbCorresp avec correspondance.";
-                    $messageType = 'success';
-                } 
-                // If NOTHING found at all, but user asked for correspondence, update error
-                elseif ($totalFound == 0 && $model->correspondance == 1) {
-                    $message = "Aucun itinéraire (ni direct, ni correspondance) trouvé.";
+                    if (!$trajet && $countCorresp == 0) {
+                         $message = "Aucun trajet n'existe entre {$departClean} et {$arriveeClean}.";
+                         $messageType = 'error';
+                    }
+                }
+                // voyages exist but are full
+                elseif ($countDirectAvailable == 0 && $countCorresp == 0) {
+                    $message = "Des voyages existent, mais places insuffisantes.";
                     $messageType = 'warn';
                 }
-                // Else: We keep your original specific message from Section 1
+                // success
+                else {
+                    $messageType = 'success';
+                    
+                    if ($model->correspondance == 1) {
+                        $parts = [];
+                        if ($countDirectDisplayed > 0) {
+                            $parts[] = "$countDirectDisplayed direct(s)";
+                        }
+                        if ($countCorresp > 0) {
+                            $parts[] = "$countCorresp avec correspondance";
+                        }
+                        $message = "Trouvé : " . implode(" et ", $parts) . ".";
+                    } else {
+                        $message = "$countDirectDisplayed voyage(s) trouvé(s).";
+                    }
+                }
             }
 
-            // -----------------------------------------------------------
-            // 4. INJECTED: SAFE RENDER (Inside Try Block)
-            // -----------------------------------------------------------
             $tableResult = $this->renderPartial('table-result', [
                 'model'      => $model,
                 'voyages'    => $voyagesDirect,
-                'paths'      => $pathsCorrespondance, // Pass paths
+                'paths'      => $pathsCorrespondance,
                 'messageNew' => false,
             ]);
 
         } catch (\Throwable $e) {
-            // Catch View Errors or Logic Errors
             Yii::error($e->getMessage(), __METHOD__);
             return [
-                'tableResult' => '<div class="alert alert-danger">
-                                    <strong>Erreur :</strong> ' . $e->getMessage() . 
-                                    '<br><small>Fichier: ' . $e->getFile() . ' (Ligne ' . $e->getLine() . ')</small>
-                                  </div>',
+                'tableResult' => '<div class="alert alert-danger">Erreur: ' . $e->getMessage() . '</div>',
                 'message' => 'Erreur critique détectée.',
                 'messageType' => 'error'
             ];
@@ -203,25 +212,74 @@ public function actionRechercherVoyage()
             'messageType' => $messageType,
         ];
     }
-    
+
     public function actionCreate()
     {
-        // Security Check: Drivers Only
         $identity = Yii::$app->user->identity;
+        
+        //verify if he has a license, otherwise he cannot propose a trip
         if (!$identity || empty($identity->permis)) {
-            Yii::$app->session->setFlash('error', "Vous devez avoir un permis pour proposer un voyage.");
-            return $this->goHome();
+            if (Yii::$app->request->isAjax) {
+                Yii::$app->response->format = Response::FORMAT_JSON;
+                return [
+                    'html' => $this->renderPartial('recherche-voyage', ['model' => new VoyageForm()]),
+                    'message' => "Vous devez avoir un permis.",
+                    'messageType' => 'error',
+                ];
+            }
+            return $this->redirect(['voyage/index']);
         }
 
         $model = new ProposeVoyageForm();
 
+        // if the form is sent and saved correctly
         if ($model->load(Yii::$app->request->post()) && $model->save()) {
-            Yii::$app->session->setFlash('success', "Votre voyage a été publié avec succès !");
+            
+            if (Yii::$app->request->isAjax) {
+                Yii::$app->response->format = Response::FORMAT_JSON;
+                
+                // we reload the user to get the fresh data (including the new trip)
+                $user = Internaute::findOne(Yii::$app->user->id);
+
+                return [
+                    'html' => $this->renderPartial('@app/views/site/profile', [
+                        'user' => $user,
+                        'reservations' => $user->reservationsObject,
+                        'propositions' => $user->voyagesConduitsObject,
+                    ]),
+                    'message' => 'Voyage publié avec succès',
+                    'messageType' => 'success',
+                ];
+            }
+            // simple fallback for non-ajax
             return $this->redirect(['site/profile']);
         }
 
-        return $this->render('create', [
-            'model' => $model,
-        ]);
+        // get the lists for the dropdowns
+        $types = ArrayHelper::map(TypeVehicule::find()->asArray()->all(), 'id', 'typev');
+        $marques = ArrayHelper::map(MarqueVehicule::find()->asArray()->all(), 'id', 'marquev');
+
+        // show the form (first time or if there are errors)
+        if (Yii::$app->request->isAjax) {
+            Yii::$app->response->format = Response::FORMAT_JSON;
+            
+            $response = [
+                'html' => $this->renderPartial('create', [
+                    'model' => $model,
+                    'types' => $types,
+                    'marques' => $marques
+                ]),
+            ];
+
+            // if there are validation errors after the submit, we notify the user
+            if ($model->hasErrors()) {
+                $response['message'] = "Veuillez corriger les erreurs dans le formulaire.";
+                $response['messageType'] = 'error';
+            }
+
+            return $response;
+        }
+
+        return $this->render('create', ['model' => $model, 'types' => $types, 'marques' => $marques]);
     }
 }

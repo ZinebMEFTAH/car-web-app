@@ -145,7 +145,7 @@ class Voyage extends ActiveRecord
     {
         $distanceMinutes = $this->trajetObject ? (int)$this->trajetObject->distance : 0;
 
-        // départ = H:00 → converti en minutes
+        // départ = H:00 -> converti en minutes
         $departMinutes = ((int)$this->heuredepart) * 60;
 
         $arriveeMinutes = $departMinutes + $distanceMinutes;
@@ -159,7 +159,7 @@ class Voyage extends ActiveRecord
         return sprintf("%02d:%02d", $h, $m);
     }
 
-    // --- RECURSIVE SEARCH ---
+    //--- RECURSIVE SEARCH ---
 
     public static function searchCorrespondences($depart, $arrivee, $nbPersonnes)
     {
@@ -171,46 +171,48 @@ class Voyage extends ActiveRecord
 
     private static function findPathsRecursive($currentCity, $targetCity, $nbPersonnes, $minTime, $currentPath, $visitedCities, &$allPaths)
     {
-        // 1. STOP if we have enough results (Saves Memory)
-        //if (count($allPaths) >= 5) return;
-
-        // 2. STOP if recursion is too deep (Prevents Stack Overflow)
-        //if (count($currentPath) >= 3) return;
-
-        // Clean Inputs
+        //standrdize inputs
         $currentClean = mb_strtolower(trim($currentCity));
         $targetClean  = mb_strtolower(trim($targetCity));
 
-        // 3. STOP if Cycle Detected
+        // if we are visiting the same city again in the same pthe -> cycle -> stop this path searching 
         if (in_array($currentClean, $visitedCities)) return;
 
         $visitedCities[] = $currentClean;
 
-        // Find Routes
-        $trajets = Trajet::find()->where(['depart' => $currentCity])->all();
+        //Find all the trajets that starts with our starting ville 
+        $trajets = Trajet::findAll(['depart' => $currentCity]);
 
-        foreach ($trajets as $trajet) {
-            // Optimization: Skip empty trajets early
+        foreach ($trajets as $trajet) { // we loop all over the found cities
+
+            //if there are not travels in this ttrajet no need to keep them
             $voyages = $trajet->voyagesObject;
             if (empty($voyages)) continue;
 
+            // in case there is we loop we check: if it can accept, the timing ! 
             foreach ($voyages as $voyage) {
                 // Checks
-                //if (!$voyage->canItAccept($nbPersonnes)) continue;
+                if (!$voyage->canItAccept($nbPersonnes)) continue;
                 if ($voyage->heuredepart < $minTime) continue;
 
                 // Build Path
                 $newPath = $currentPath;
                 $newPath[] = $voyage;
 
-                // Destination Check
+                //Destination Check
                 if (mb_strtolower(trim($trajet->arrivee)) === $targetClean) {
+
                     $allPaths[] = $newPath;
+
+                    // if we wanna limit timing cuz now it takes long 
                     //if (count($allPaths) >= 5) return;
+
                 } else {
+                    
                     // Calculate Next Start Time
                     // Default to 60 mins (1 hour) if distance is missing/zero
                     $dist = ($trajet->distance > 0) ? $trajet->distance : 60;
+                    
                     $arrivalTime = $voyage->heuredepart + ($dist / 60);
 
                     self::findPathsRecursive(

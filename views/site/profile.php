@@ -7,7 +7,7 @@
 use yii\helpers\Html;
 use yii\helpers\Url;
 
-// ONLY Custom CSS
+// force reload css to avoid cache
 $this->registerCssFile(Yii::getAlias('@web/css/covoit.css?v=' . time())); 
 
 $this->title = 'Mon Profil';
@@ -19,7 +19,10 @@ $this->title = 'Mon Profil';
         <div class="card-body p-4">
             <div class="row align-items-center">
                 <div class="col-md-2 text-center">
-                    <?php $photo = !empty($user->photo) ? $user->photo : 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; ?>
+                    <?php 
+                    // if no photo, use default icon
+                    $photo = !empty($user->photo) ? $user->photo : 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; 
+                    ?>
                     <img src="<?= Html::encode($photo) ?>" alt="Profil" class="rounded-circle img-fluid shadow">
                 </div>
                 <div class="col-md-7">
@@ -45,6 +48,7 @@ $this->title = 'Mon Profil';
         <?php else: ?>
             <div class="row">
                 <?php foreach ($reservations as $resa): 
+                    // get the details of the trip using the relation
                     $voyage = $resa->voyageObject;
                     $trajet = $voyage ? $voyage->trajetObject : null;
                 ?>
@@ -69,7 +73,9 @@ $this->title = 'Mon Profil';
         <?php endif; ?>
     </div>
 
-    <?php if ($user->isConducteur()): ?>
+    <?php 
+    // show this section only if he is a driver
+    if ($user->isConducteur()): ?>
         <div class="mb-5">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h4 class="font-weight-bold mb-0">Mes Annonces</h4>
